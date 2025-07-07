@@ -2,9 +2,9 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>🏀 Sniper J GM 模擬器 v0.9.0 Ultimate+</title>
+  <title>🏀 Sniper J GM 模擬器 v0.9.2+</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #f2f2f2; }
+    body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
     h1 { color: #2c3e50; }
     button { margin:5px;padding:10px;font-size:16px;border-radius:5px;cursor:pointer;background:#3498db;color:#fff;border:none; }
     button:disabled { background:#aaa; cursor:not-allowed; }
@@ -12,12 +12,12 @@
     .player-info { flex-grow:1; }
     .container { max-width:900px; margin:auto; }
     .section { margin-top:30px; }
-    input[type="checkbox"] { margin-right:5px; }
+    #versionFooter { margin-top: 40px; text-align:center; font-size:14px; color:#888; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🏀 Sniper J GM 模擬器 v0.9.0 Ultimate+</h1>
+    <h1>🏀 Sniper J GM 模擬器 v0.9.2+</h1>
     <div>
       <button id="clearBtn">清空存檔</button>
       <span id="dateDisplay"></span>
@@ -35,6 +35,7 @@
     <div id="tradeDisplay"></div>
     <div id="gameResult"></div>
   </div>
+  <div id="versionFooter">版本：v0.9.2+（2025-07-05）</div>
 
   <script>
 (() => {
@@ -82,7 +83,7 @@
   }
 
   function load() {
-    const s=localStorage.getItem("sj_v090");
+    const s=localStorage.getItem("sj_v092");
     if(s) Object.assign(window,JSON.parse(s));
     else Object.assign(window,defaultData());
     lastDate = window.lastDate;
@@ -90,7 +91,7 @@
 
   function save(){
     window.lastDate = lastDate;
-    localStorage.setItem("sj_v090", JSON.stringify({
+    localStorage.setItem("sj_v092", JSON.stringify({
       warriors, freeAgents, otherTeams, money, salaryCap, lastDate, picks, trainLimit
     }));
   }
