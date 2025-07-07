@@ -10,7 +10,6 @@
     button:disabled { background:#aaa; cursor:not-allowed; }
     .player { background:#fff;margin:10px 0;padding:10px;border-radius:6px;display:flex;align-items:center;justify-content:space-between; }
     .player-info { flex-grow:1; }
-    .progress-bar { width:100%; background:#ddd; border-radius:4px; overflow:hidden; height:8px; margin-top:4px; }
     .container { max-width:900px; margin:auto; }
     .section { margin-top:30px; }
     input[type="checkbox"] { margin-right:5px; }
@@ -36,7 +35,8 @@
     <div id="tradeDisplay"></div>
     <div id="gameResult"></div>
   </div>
-    <script>
+
+  <script>
 (() => {
   const ratingMap = {"C":1,"C+":2,"B-":3,"B":4,"B+":5,"A-":6,"A":7,"A+":8,"S":9,"S+":10};
   const order = ["C","C+","B-","B","B+","A-","A","A+","S","S+"];
@@ -101,7 +101,8 @@
     document.getElementById("dateDisplay").textContent="今天："+now;
     document.getElementById("moneyDisplay").textContent= `資金:$${money}M 工資:${sal}/${salaryCap}M  首輪籤:${picks["勇士"]}`;
   }
-    function showWarriors(){
+
+  function showWarriors(){
     const out = document.getElementById("teamDisplay");
     let trainedCount = warriors.filter(p=>p.trained).length;
     out.innerHTML="<h2>🏀 勇士陣容</h2>";
@@ -175,35 +176,29 @@
       btn.onclick=()=>{
         const team=btn.getAttribute("data-team");
         const theirs=otherTeams[team];
-        let html=`<h3>與 ${team} 交易</h3>`;
-        html+= warriors.map((p,i)=><p/>).join("");
-        html=`<div>
+        let html=`<h3>與 ${team} 交易</h3>
           <h4>選勇士球員（最多3）</h4>` + warriors.map((p,i)=>`
-            <label><input type=checkbox class=my data-idx=${i}> ${p.name}｜${p.rating}</label><br>
-          `).join("") + `
+            <label><input type=checkbox class=my data-idx=${i}> ${p.name}｜${p.rating}</label><br>`).join("") + `
           <label><input type=checkbox id="myPick"> 用我方1張首輪籤 (剩${picks["勇士"]})</label>
           <h4>選對方球員（最多3）</h4>` + theirs.map((p,i)=>`
-            <label><input type=checkbox class=their data-idx=${i}> ${p.name}｜${p.rating}</label><br>
-          `).join("") + `
+            <label><input type=checkbox class=their data-idx=${i}> ${p.name}｜${p.rating}</label><br>`).join("") + `
           <label><input type=checkbox id="theirPick"> 要對方1張首輪籤</label><br>
           <button id="doTrade">提出交易</button>
-          <div id="tradeMsg"></div>
-        </div>`;
+          <div id="tradeMsg"></div>`;
         out.innerHTML=html;
         document.getElementById("doTrade").onclick=()=>{
           const mySel=[...out.querySelectorAll(".my:checked")].map(c=>warriors[+c.dataset.idx]);
           const theirSel=[...out.querySelectorAll(".their:checked")].map(c=>theirs[+c.dataset.idx]);
           if(mySel.length>3||theirSel.length>3){ alert("最多3換3"); return; }
-          let valMy=mySel.reduce((a,p)=>a+ratingMap[p.rating],0)+ (out.myPick.checked?4:0);
-          let valThe=theirSel.reduce((a,p)=>a+ratingMap[p.rating],0)+ (out.theirPick.checked?4:0);
-          if(valMy-valThe>2){ out.tradeMsg.textContent="對方覺得不夠"; return; }
-          if(valThe-valMy>4){ out.tradeMsg.textContent="你吃虧太多"; return; }
-          // 成功
-          if(out.myPick.checked){ if(picks["勇士"]>0) picks["勇士"]--; }
-          if(out.theirPick.checked) picks["勇士"]++;
+          let valMy=mySel.reduce((a,p)=>a+ratingMap[p.rating],0)+ (document.getElementById("myPick").checked?4:0);
+          let valThe=theirSel.reduce((a,p)=>a+ratingMap[p.rating],0)+ (document.getElementById("theirPick").checked?4:0);
+          if(valMy-valThe>2){ document.getElementById("tradeMsg").textContent="對方覺得不夠"; return; }
+          if(valThe-valMy>4){ document.getElementById("tradeMsg").textContent="你吃虧太多"; return; }
+          if(document.getElementById("myPick").checked){ if(picks["勇士"]>0) picks["勇士"]--; }
+          if(document.getElementById("theirPick").checked) picks["勇士"]++;
           warriors = warriors.filter(p=>!mySel.includes(p)).concat(theirSel.map(p=>({...p,trainProgress:0,trained:false})));
           otherTeams[team] = theirs.filter(p=>!theirSel.includes(p)).concat(mySel);
-          out.tradeMsg.textContent="✅ 交易完成！";
+          document.getElementById("tradeMsg").textContent="✅ 交易完成！";
           save(); renderStatus(); showWarriors(); showTrade();
         };
       };
@@ -249,3 +244,5 @@
   });
 })();
   </script>
+</body>
+</html>
