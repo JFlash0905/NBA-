@@ -2,21 +2,23 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>Sniper J 測試按鈕</title>
-  <style>
-    body { font-family: sans-serif; padding: 30px; background: #f9f9f9; text-align: center; }
-    button { padding: 15px 30px; font-size: 20px; background: #27ae60; color: white; border: none; border-radius: 10px; cursor: pointer; }
-  </style>
+  <title>Sniper J 測試勇士按鈕</title>
 </head>
 <body>
-  <h1>🚀 測試頁：看看你能不能按到我</h1>
-  <button id="testBtn">點我測試 JS</button>
+  <h1>Sniper J 按鈕測試 v0.9.1</h1>
+  <button id="showWarriorsBtn">勇士陣容</button>
+  <div id="teamDisplay"></div>
 
   <script>
-    console.log("🔥 測試腳本已載入 Sniper J 測試中...");
-    document.getElementById("testBtn").onclick = () => {
-      alert("✅ 成功觸發按鈕！");
-    };
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("✅ 腳本開始執行");
+
+      document.getElementById("showWarriorsBtn").onclick = () => {
+        const out = document.getElementById("teamDisplay");
+        out.innerHTML = "<p>勇士陣容顯示成功！</p>";
+        console.log("🏀 勇士按鈕已觸發");
+      };
+    });
   </script>
 </body>
 </html>
