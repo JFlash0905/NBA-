@@ -1,22 +1,24 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <title>Sniper J GM 模擬器 v0.9.0 Ultimate+</title>
+  <meta charset="UTF-8" />
+  <title>🏀 Sniper J GM 模擬器 v0.9.0 Ultimate+</title>
   <style>
-    body { font-family: sans-serif; background: #f0f0f0; padding: 20px; }
+    body { font-family: sans-serif; padding: 20px; background: #f2f2f2; }
     h1 { color: #2c3e50; }
     button { margin:5px;padding:10px;font-size:16px;border-radius:5px;cursor:pointer;background:#3498db;color:#fff;border:none; }
     button:disabled { background:#aaa; cursor:not-allowed; }
     .player { background:#fff;margin:10px 0;padding:10px;border-radius:6px;display:flex;align-items:center;justify-content:space-between; }
     .player-info { flex-grow:1; }
+    .progress-bar { width:100%; background:#ddd; border-radius:4px; overflow:hidden; height:8px; margin-top:4px; }
     .container { max-width:900px; margin:auto; }
     .section { margin-top:30px; }
+    input[type="checkbox"] { margin-right:5px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>🏀 Sniper J GM 模擬器 v0.9.0 Ultimate+</h1>
+    <h1>🏀 Sniper J GM 模擬器 v0.9.0 Ultimate+</h1>
     <div>
       <button id="clearBtn">清空存檔</button>
       <span id="dateDisplay"></span>
@@ -34,147 +36,216 @@
     <div id="tradeDisplay"></div>
     <div id="gameResult"></div>
   </div>
+    <script>
+(() => {
+  const ratingMap = {"C":1,"C+":2,"B-":3,"B":4,"B+":5,"A-":6,"A":7,"A+":8,"S":9,"S+":10};
+  const order = ["C","C+","B-","B","B+","A-","A","A+","S","S+"];
 
-  <script>
-    window.addEventListener("DOMContentLoaded", () => {
-      const ratingMap = {"C":1,"C+":2,"B-":3,"B":4,"B+":5,"A-":6,"A":7,"A+":8,"S":9,"S+":10};
-      const order = ["C","C+","B-","B","B+","A-","A","A+","S","S+"];
+  let warriors, freeAgents, otherTeams, money, salaryCap, lastDate, picks, trainLimit;
 
-      let warriors, freeAgents, otherTeams, money, salaryCap, lastDate, picks, trainLimit;
+  function defaultData() {
+    return {
+      warriors:[
+        {name:"Stephen Curry",rating:"S",salary:35,trainProgress:0,trained:false},
+        {name:"Klay Thompson",rating:"B+",salary:20,trainProgress:0,trained:false},
+        {name:"Draymond Green",rating:"B",salary:18,trainProgress:0,trained:false},
+        {name:"Jonathan Kuminga",rating:"B",salary:15,trainProgress:0,trained:false},
+        {name:"Andrew Wiggins",rating:"B+",salary:22,trainProgress:0,trained:false},
+        {name:"Moses Moody",rating:"C+",salary:10,trainProgress:0,trained:false},
+        {name:"Gary Payton II",rating:"C+",salary:9,trainProgress:0,trained:false},
+        {name:"Brandin Podziemski",rating:"B-",salary:11,trainProgress:0,trained:false},
+        {name:"Kevon Looney",rating:"C",salary:8,trainProgress:0,trained:false}
+      ],
+      freeAgents:[
+        {name:"Malik Beasley",rating:"B",salary:15,signChance:60},
+        {name:"Robert Covington",rating:"B-",salary:12,signChance:50},
+        {name:"Dennis Smith Jr.",rating:"B-",salary:9,signChance:55},
+        {name:"Justise Winslow",rating:"C+",salary:7,signChance:45},
+        {name:"Tristan Thompson",rating:"C",salary:6,signChance:50}
+      ],
+      otherTeams:{
+        "雷霆":[
+          {name:"Shai Gilgeous‑Alexander",rating:"S",salary:34},
+          {name:"Jalen Williams",rating:"A",salary:20},
+          {name:"Chet Holmgren",rating:"A-",salary:18}
+        ],
+        "金塊":[
+          {name:"Nikola Jokic",rating:"S+",salary:38},
+          {name:"Jamal Murray",rating:"A",salary:27},
+          {name:"Aaron Gordon",rating:"B+",salary:24}
+        ]
+      },
+      money:100,salaryCap:120,lastDate:null,
+      picks:{"勇士":2,"雷霆":2,"金塊":2},
+      trainLimit:5
+    };
+  }
 
-      function defaultData() {
-        return {
-          warriors: [
-            {name:"Stephen Curry",rating:"S",salary:35,trainProgress:0,trained:false},
-            {name:"Klay Thompson",rating:"B+",salary:20,trainProgress:0,trained:false},
-            {name:"Draymond Green",rating:"B",salary:18,trainProgress:0,trained:false}
-          ],
-          freeAgents: [
-            {name:"Malik Beasley",rating:"B",salary:15,signChance:60},
-            {name:"Robert Covington",rating:"B-",salary:12,signChance:50}
-          ],
-          otherTeams: {
-            "雷霆":[
-              {name:"SGA",rating:"S",salary:34},
-              {name:"Jalen Williams",rating:"A",salary:20}
-            ],
-            "金塊":[
-              {name:"Jokic",rating:"S+",salary:38},
-              {name:"Jamal Murray",rating:"A",salary:27}
-            ]
-          },
-          money:100, salaryCap:120, lastDate:null,
-          picks:{"勇士":2,"雷霆":2,"金塊":2}, trainLimit:5
-        };
-      }
+  function load() {
+    const s=localStorage.getItem("sj_v090");
+    if(s) Object.assign(window,JSON.parse(s));
+    else Object.assign(window,defaultData());
+    lastDate = window.lastDate;
+  }
 
-      function load() {
-        const s = localStorage.getItem("sj_v090");
-        if (s) Object.assign(window, JSON.parse(s));
-        else Object.assign(window, defaultData());
-      }
+  function save(){
+    window.lastDate = lastDate;
+    localStorage.setItem("sj_v090", JSON.stringify({
+      warriors, freeAgents, otherTeams, money, salaryCap, lastDate, picks, trainLimit
+    }));
+  }
 
-      function save() {
-        localStorage.setItem("sj_v090", JSON.stringify({warriors, freeAgents, otherTeams, money, salaryCap, lastDate, picks, trainLimit}));
-      }
-
-      function renderStatus() {
-        const now = new Date().toLocaleDateString();
-        const sal = warriors.reduce((a,p)=>a+p.salary,0);
-        document.getElementById("dateDisplay").textContent = "今天：" + now;
-        document.getElementById("moneyDisplay").textContent = `資金：$${money}M　工資：${sal}/${salaryCap}M　首輪籤：${picks["勇士"]}`;
-      }
-
-      function showWarriors() {
-        const out = document.getElementById("teamDisplay");
-        out.innerHTML = "<h2>勇士陣容</h2>";
-        let trainedCount = warriors.filter(p=>p.trained).length;
-        warriors.forEach((p,i) => {
-          out.innerHTML += `
-            <div class="player">
-              <div class="player-info">
-                <strong>${p.name}</strong>｜${p.rating}｜★${"★".repeat(Math.min(5,Math.round(ratingMap[p.rating]/2)))}｜$${p.salary}M<br>
-                訓練進度：${p.trainProgress}%
-              </div>
-              <button ${p.trained || trainedCount >= trainLimit ? "disabled" : ""} data-idx="${i}">訓練</button>
-            </div>`;
-        });
-        out.querySelectorAll("button").forEach(btn => {
-          btn.onclick = () => {
-            const i = +btn.getAttribute("data-idx");
-            const p = warriors[i];
-            p.trained = true;
-            p.trainProgress += Math.floor(Math.random()*10+10);
-            if (p.trainProgress >= 100) {
-              const idx = order.indexOf(p.rating);
-              if (idx < order.length - 1 && Math.random() < 0.3) {
-                p.rating = order[idx+1];
-                alert(`${p.name} 升級到 ${p.rating}！`);
-              }
-              p.trainProgress = 0;
-            }
-            save(); showWarriors(); renderStatus();
-          };
-        });
-      }
-
-      function showFreeAgents() {
-        const out = document.getElementById("freeAgentsDisplay");
-        out.innerHTML = "<h2>自由市場</h2>";
-        freeAgents.forEach((p,i)=>{
-          out.innerHTML += `
-            <div class="player">
-              <div class="player-info">${p.name}｜${p.rating}｜$${p.salary}M</div>
-              <button data-idx="${i}">簽約</button>
-            </div>`;
-        });
-        out.querySelectorAll("button").forEach(btn=>{
-          btn.onclick = () => {
-            const i = +btn.getAttribute("data-idx");
-            const p = freeAgents[i];
-            if (money < p.salary) return alert("資金不足！");
-            if (Math.random()*100 < p.signChance) {
-              warriors.push({name:p.name, rating:p.rating, salary:p.salary, trainProgress:0, trained:false});
-              money -= p.salary;
-              freeAgents.splice(i,1);
-              alert("簽約成功！");
-            } else alert("簽約失敗");
-            save(); showWarriors(); showFreeAgents(); renderStatus();
-          };
-        });
-      }
-
-      function resetTraining() {
-        warriors.forEach(p => p.trained = false);
-        alert("已重置今日訓練狀態！");
-        save(); showWarriors();
-      }
-
-      function simulateGame() {
-        const today = new Date().toDateString();
-        if (lastDate === today) return alert("今日已模擬！");
-        const teams = Object.values(otherTeams);
-        const opp = teams[Math.floor(Math.random()*teams.length)];
-        const myScore = warriors.reduce((a,p)=>a + ratingMap[p.rating]*(Math.random()+0.5),0);
-        const oppScore = opp.reduce((a,p)=>a + ratingMap[p.rating]*(Math.random()+0.5),0);
-        const mvp = warriors[Math.floor(Math.random()*warriors.length)].name;
-        document.getElementById("gameResult").innerHTML = `<h2>比分 ${Math.round(myScore)} : ${Math.round(oppScore)}</h2><p>MVP：${mvp}</p>`;
-        lastDate = today;
-        save(); renderStatus();
-      }
-
-      document.getElementById("showWarriorsBtn").onclick = showWarriors;
-      document.getElementById("showFreeAgentsBtn").onclick = showFreeAgents;
-      document.getElementById("simulateGameBtn").onclick = simulateGame;
-      document.getElementById("resetTrainingBtn").onclick = resetTraining;
-      document.getElementById("clearBtn").onclick = () => {
-        if (confirm("是否清除所有資料？")) {
-          localStorage.clear(); location.reload();
-        }
-      };
-
-      load(); renderStatus(); showWarriors();
+  function renderStatus(){
+    const now=new Date().toLocaleDateString();
+    const sal=warriors.reduce((a,p)=>a+p.salary,0);
+    document.getElementById("dateDisplay").textContent="今天："+now;
+    document.getElementById("moneyDisplay").textContent= `資金:$${money}M 工資:${sal}/${salaryCap}M  首輪籤:${picks["勇士"]}`;
+  }
+    function showWarriors(){
+    const out = document.getElementById("teamDisplay");
+    let trainedCount = warriors.filter(p=>p.trained).length;
+    out.innerHTML="<h2>🏀 勇士陣容</h2>";
+    warriors.forEach((p,i)=>{
+      const pct=p.trainProgress;
+      const next = order[order.indexOf(p.rating)+1]||"MAX";
+      out.innerHTML += `
+      <div class=player>
+        <div class=player-info>
+          <strong>${p.name}</strong>｜${p.rating}｜${"★".repeat(Math.min(5,Math.round(ratingMap[p.rating]/2)))}｜$${p.salary}M<br>
+          訓練:${pct}% (目標${next})
+        </div>
+        <button ${p.trained||trainedCount>=trainLimit?"disabled":""} data-idx=${i}>訓練</button>
+      </div>`;
     });
+    out.querySelectorAll("button").forEach(btn=>{
+      btn.onclick = ()=>{
+        const i=+btn.getAttribute("data-idx");
+        const p=warriors[i];
+        if(p.trained) return;
+        p.trainProgress = Math.min(100,p.trainProgress + (10+Math.random()*10)|0);
+        p.trained=true;
+        trainedCount++;
+        if(p.trainProgress>=100){
+          p.trainProgress=0;
+          if(Math.random()<0.3){
+            const ord=order.indexOf(p.rating);
+            if(ord<order.length-1){
+              p.rating=order[ord+1];
+              alert(p.name+" 升級到 "+p.rating+"！");
+            }
+          }
+        }
+        save(); renderStatus(); showWarriors();
+      };
+    });
+  }
+
+  function showFreeAgents(){
+    const out=document.getElementById("freeAgentsDisplay");
+    out.innerHTML="<h2>📝 自由市場</h2>";
+    freeAgents.forEach((p,i)=>{
+      out.innerHTML+=`
+      <div class=player>
+        <div class=player-info><strong>${p.name}</strong>｜${p.rating}｜$${p.salary}M</div>
+        <button data-idx=${i}>簽約</button>
+      </div>`;
+    });
+    out.querySelectorAll("button").forEach(btn=>{
+      btn.onclick=()=>{
+        const i=+btn.getAttribute("data-idx"), p=freeAgents[i];
+        if(money<p.salary){ alert("資金不足！"); return; }
+        if(Math.random()*100<p.signChance){
+          warriors.push({name:p.name,rating:p.rating,salary:p.salary,trainProgress:0,trained:false});
+          money-=p.salary;
+          freeAgents.splice(i,1);
+          alert(p.name+" 成功簽約！");
+        } else alert(p.name+" 拒絕簽約");
+        save(); showWarriors(); showFreeAgents(); renderStatus();
+      };
+    });
+  }
+
+  function showTrade(){
+    const out=document.getElementById("tradeDisplay");
+    out.innerHTML="<h2>🔄 交易中心</h2>";
+    Object.keys(otherTeams).forEach(team=>{
+      out.innerHTML+=`<button data-team="${team}">${team}</button>`;
+    });
+    out.querySelectorAll("button[data-team]").forEach(btn=>{
+      btn.onclick=()=>{
+        const team=btn.getAttribute("data-team");
+        const theirs=otherTeams[team];
+        let html=`<h3>與 ${team} 交易</h3>`;
+        html+= warriors.map((p,i)=><p/>).join("");
+        html=`<div>
+          <h4>選勇士球員（最多3）</h4>` + warriors.map((p,i)=>`
+            <label><input type=checkbox class=my data-idx=${i}> ${p.name}｜${p.rating}</label><br>
+          `).join("") + `
+          <label><input type=checkbox id="myPick"> 用我方1張首輪籤 (剩${picks["勇士"]})</label>
+          <h4>選對方球員（最多3）</h4>` + theirs.map((p,i)=>`
+            <label><input type=checkbox class=their data-idx=${i}> ${p.name}｜${p.rating}</label><br>
+          `).join("") + `
+          <label><input type=checkbox id="theirPick"> 要對方1張首輪籤</label><br>
+          <button id="doTrade">提出交易</button>
+          <div id="tradeMsg"></div>
+        </div>`;
+        out.innerHTML=html;
+        document.getElementById("doTrade").onclick=()=>{
+          const mySel=[...out.querySelectorAll(".my:checked")].map(c=>warriors[+c.dataset.idx]);
+          const theirSel=[...out.querySelectorAll(".their:checked")].map(c=>theirs[+c.dataset.idx]);
+          if(mySel.length>3||theirSel.length>3){ alert("最多3換3"); return; }
+          let valMy=mySel.reduce((a,p)=>a+ratingMap[p.rating],0)+ (out.myPick.checked?4:0);
+          let valThe=theirSel.reduce((a,p)=>a+ratingMap[p.rating],0)+ (out.theirPick.checked?4:0);
+          if(valMy-valThe>2){ out.tradeMsg.textContent="對方覺得不夠"; return; }
+          if(valThe-valMy>4){ out.tradeMsg.textContent="你吃虧太多"; return; }
+          // 成功
+          if(out.myPick.checked){ if(picks["勇士"]>0) picks["勇士"]--; }
+          if(out.theirPick.checked) picks["勇士"]++;
+          warriors = warriors.filter(p=>!mySel.includes(p)).concat(theirSel.map(p=>({...p,trainProgress:0,trained:false})));
+          otherTeams[team] = theirs.filter(p=>!theirSel.includes(p)).concat(mySel);
+          out.tradeMsg.textContent="✅ 交易完成！";
+          save(); renderStatus(); showWarriors(); showTrade();
+        };
+      };
+    });
+  }
+
+  function simulate(){
+    const today=new Date().toDateString();
+    if(lastDate===today){alert("今日已模擬，明天再來");return;}
+    const teams=Object.keys(otherTeams);
+    const opp=otherTeams[teams[Math.random()*teams.length|0]];
+    const ts=warriors.reduce((a,p)=>a+ratingMap[p.rating]*(Math.random()+0.5),0);
+    const os=opp.reduce((a,p)=>a+ratingMap[p.rating]*(Math.random()+0.5),0);
+    const mvp = warriors.reduce((best,p)=>ratingMap[p.rating]*(Math.random()+0.5) > best.score? {name:p.name,score:ratingMap[p.rating]}:best,{name:"",score:0});
+    document.getElementById("gameResult").innerHTML=`
+      <h2>🏀 比分：${ts|0}:${os|0}</h2><p>MVP：${mvp.name}</p>`;
+    lastDate=today; save(); renderStatus();
+  }
+
+  function reset(){
+    warriors.forEach(p=>p.trained=false);
+    alert("訓練狀態重置");
+    save(); showWarriors();
+  }
+
+  function dailyReset(){
+    const today=new Date().toDateString();
+    if(lastDate!==today){
+      warriors.forEach(p=>p.trained=false);
+      lastDate=today; save(); renderStatus(); showWarriors();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    load(); dailyReset(); renderStatus(); showWarriors();
+    document.getElementById("showWarriorsBtn").onclick = showWarriors;
+    document.getElementById("showFreeAgentsBtn").onclick = showFreeAgents;
+    document.getElementById("showTradeBtn").onclick = showTrade;
+    document.getElementById("simulateGameBtn").onclick = simulate;
+    document.getElementById("resetTrainingBtn").onclick = reset;
+    document.getElementById("clearBtn").onclick = ()=>{ if(confirm("清除資料？")){localStorage.clear(); location.reload()} };
+    setInterval(dailyReset,60000);
+  });
+})();
   </script>
-</body>
-</html>
