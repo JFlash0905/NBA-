@@ -42,6 +42,7 @@
 (() => {
   const ratingMap = {"C":1,"C+":2,"B-":3,"B":4,"B+":5,"A-":6,"A":7,"A+":8,"S":9,"S+":10};
   const order = ["C","C+","B-","B","B+","A-","A","A+","S","S+"];
+
   let warriors, freeAgents, otherTeams, money, salaryCap, lastDate, picks, trainLimit;
 
   function defaultData() {
@@ -136,12 +137,184 @@
       `資金:$${money}M 工資:${sal}/${salaryCap}M 首輪籤:${picks["勇士"]}`;
   }
 
-  function showWarriors(){ /* ... 內容照你貼的 ... */ }
-  function showFreeAgents(){ /* ... 內容照你貼的 ... */ }
-  function showTrade(){ /* ... 內容照你貼的 ... */ }
-  function simulateGame(){ /* ... 內容照你貼的 ... */ }
-  function resetTraining(){ /* ... 內容照你貼的 ... */ }
-  function dailyReset(){ /* ... 內容照你貼的 ... */ }
+  function showWarriors(){
+    const out = document.getElementById("teamDisplay");
+    let trainedCount = warriors.filter(p => p.trained).length;
+    out.innerHTML = "<h2>🏀 勇士陣容</h2>";
+    warriors.forEach((p, i) => {
+      const pct = p.trainProgress;
+      const next = order[order.indexOf(p.rating) + 1] || "MAX";
+      out.innerHTML += `
+        <div class="player">
+          <div class="player-info">
+            <strong>${p.name}</strong>｜${p.rating}｜${"★".repeat(Math.min(5, Math.round(ratingMap[p.rating] / 2)))}｜$${p.salary}M<br>
+            訓練:${pct}% (目標${next})
+          </div>
+          <button ${p.trained || trainedCount >= trainLimit ? "disabled" : ""} data-idx=${i}>訓練</button>
+        </div>`;
+    });
+    out.querySelectorAll("button").forEach(btn => {
+      btn.onclick = () => {
+        const i = +btn.getAttribute("data-idx"), p = warriors[i];
+        if(p.trained) return;
+        p.trainProgress = Math.min(100, p.trainProgress + (10 + Math.random() * 10) | 0);
+        p.trained = true;
+        trainedCount++;
+        if(p.trainProgress >= 100){
+          p.trainProgress = 0;
+          if(Math.random() < 0.3){
+            const idx = order.indexOf(p.rating);
+            if(idx < order.length - 1){
+              p.rating = order[idx + 1];
+              alert(p.name + " 升級到 " + p.rating + "！");
+            }
+          }
+        }
+        save(); renderStatus(); showWarriors();
+      };
+    });
+  }
+
+  function showFreeAgents(){
+    const out = document.getElementById("freeAgentsDisplay");
+    out.innerHTML = "<h2>📝 自由市場</h2>";
+    freeAgents.forEach((p, i) => {
+      out.innerHTML += `
+        <div class="player">
+          <div class="player-info"><strong>${p.name}</strong>｜${p.rating}｜$${p.salary}M</div>
+          <button data-idx=${i}>簽約</button>
+        </div>`;
+    });
+    out.querySelectorAll("button").forEach(btn => {
+      btn.onclick = () => {
+        const i = +btn.getAttribute("data-idx"), p = freeAgents[i];
+        if(money < p.salary){
+          alert("資金不足！");
+          return;
+        }
+        if(Math.random() * 100 < p.signChance){
+          warriors.push({name: p.name, rating: p.rating, salary: p.salary, trainProgress: 0, trained: false});
+          money -= p.salary;
+          freeAgents.splice(i, 1);
+          alert(p.name + " 成功簽約！");
+        } else {
+          alert(p.name + " 拒絕簽約");
+        }
+        save();
+        showWarriors();
+        showFreeAgents();
+        renderStatus();
+      };
+    });
+  }
+
+  function showTrade(){
+    const out = document.getElementById("tradeDisplay");
+    out.innerHTML = "<h2>🔄 交易中心</h2>";
+
+    Object.keys(otherTeams).forEach(team => {
+      out.innerHTML += `<button data-team="${team}">${team}</button>`;
+    });
+
+    out.querySelectorAll("button[data-team]").forEach(btn => {
+      btn.onclick = () => {
+        const team = btn.getAttribute("data-team");
+        const theirs = otherTeams[team];
+
+        let html = `<h3>與 ${team} 交易</h3>
+          <h4>選勇士球員（最多3）</h4>` +
+          warriors.map((p, i) => `
+            <label><input type="checkbox" class="my" data-idx=${i}> ${p.name}｜${p.rating}</label><br>`).join("") +
+          `<label><input type="checkbox" id="myPick"> 用我方1張首輪籤 (剩${picks["勇士"]})</label>
+          <h4>選對方球員（最多3）</h4>` +
+          theirs.map((p, i) => `
+            <label><input type="checkbox" class="their" data-idx=${i}> ${p.name}｜${p.rating}</label><br>`).join("") +
+          `<label><input type="checkbox" id="theirPick"> 要對方1張首輪籤</label><br>
+          <button id="doTrade">提出交易</button>
+          <div id="tradeMsg"></div>`;
+
+        out.innerHTML = html;
+
+        document.getElementById("doTrade").onclick = () => {
+          const mySel = [...out.querySelectorAll(".my:checked")].map(c => warriors[+c.dataset.idx]);
+          const theirSel = [...out.querySelectorAll(".their:checked")].map(c => theirs[+c.dataset.idx]);
+
+          if (mySel.length > 3 || theirSel.length > 3) {
+            alert("最多3換3");
+            return;
+          }
+
+          let valMy = mySel.reduce((a, p) => a + ratingMap[p.rating], 0) + (document.getElementById("myPick").checked ? 4 : 0);
+          let valThe = theirSel.reduce((a, p) => a + ratingMap[p.rating], 0) + (document.getElementById("theirPick").checked ? 4 : 0);
+
+          if (valMy - valThe > 2) {
+            document.getElementById("tradeMsg").textContent = "對方覺得不夠";
+            return;
+          }
+          if (valThe - valMy > 4) {
+            document.getElementById("tradeMsg").textContent = "你吃虧太多";
+            return;
+          }
+
+          if (document.getElementById("myPick").checked && picks["勇士"] > 0) picks["勇士"]--;
+          if (document.getElementById("theirPick").checked) picks["勇士"]++;
+
+          warriors = warriors.filter(p => !mySel.includes(p)).concat(theirSel.map(p => ({...p, trainProgress:0, trained:false})));
+          otherTeams[team] = theirs.filter(p => !theirSel.includes(p)).concat(mySel);
+
+          document.getElementById("tradeMsg").textContent = "✅ 交易完成！";
+          save();
+          renderStatus();
+          showWarriors();
+          showTrade();
+        };
+      };
+    });
+  }
+
+  function simulateGame(){
+    const today = new Date().toDateString();
+    if (lastDate === today) {
+      alert("今日已模擬");
+      return;
+    }
+
+    const teams = Object.keys(otherTeams);
+    const opp = otherTeams[teams[Math.floor(Math.random() * teams.length)]];
+
+    const ts = warriors.reduce((a, p) => a + ratingMap[p.rating] * (Math.random() + 0.5), 0);
+    const os = opp.reduce((a, p) => a + ratingMap[p.rating] * (Math.random() + 0.5), 0);
+
+    const mvp = warriors.reduce((best, p) => {
+      const score = ratingMap[p.rating] * (Math.random() + 0.5);
+      return score > best.score ? { name: p.name, score } : best;
+    }, { name: "", score: 0 });
+
+    document.getElementById("gameResult").innerHTML =
+      `<h2>🏀 比分：${Math.floor(ts)}:${Math.floor(os)}</h2><p>MVP：${mvp.name}</p>`;
+
+    lastDate = today;
+    save();
+    renderStatus();
+  }
+
+  function resetTraining(){
+    warriors.forEach(p => p.trained = false);
+    alert("訓練狀態重置");
+    save();
+    showWarriors();
+  }
+
+  function dailyReset(){
+    const today = new Date().toDateString();
+    if (lastDate !== today) {
+      warriors.forEach(p => p.trained = false);
+      lastDate = today;
+      save();
+      renderStatus();
+      showWarriors();
+    }
+  }
 
   document.addEventListener("DOMContentLoaded", () => {
     load(); dailyReset(); renderStatus(); showWarriors();
@@ -155,7 +328,7 @@
         localStorage.clear(); location.reload();
       }
     };
-    setInterval(dailyReset, 60000);
+    setInterval(dailyReset, 60000); // 每分鐘檢查是否跨日
   });
 })();
   </script>
